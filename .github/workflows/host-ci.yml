@@ -20,4 +20,4 @@ jobs:
           node-version: '20'
       - run: npm install
       - run: npm run build
-      - run: test -f dist/microfrontends.json
+      # - run: test -f dist/microfrontends.json

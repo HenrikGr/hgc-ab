@@ -1,0 +1,26 @@
+{
+   "compilerOptions": {
+      "target": "ES2022",
+      "useDefineForClassFields": true,
+      "lib": ["DOM", "DOM.Iterable", "ES2022"],
+      "module": "ESNext",
+      "skipLibCheck": true,
+
+      /* Hybridmiljö-inställningar */
+      "allowJs": true /* Tillåter att du importerar .js och .jsx-filer */,
+      "checkJs": false /* TS kommer inte att felrapportera i dina JS-filer */,
+
+      /* Bundler-inställningar (Vite) */
+      "moduleResolution": "bundler",
+      "allowImportingTsExtensions": true,
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+      "noEmit": true,
+      "jsx": "react-jsx" /* Stöd för React 19 JSX */,
+
+      /* Sökvägar */
+      "rootDir": ".",
+      "baseUrl": "."
+   },
+   "include": ["src"] /* Berätta för TS att din kod ligger i src-mappen */
+}
