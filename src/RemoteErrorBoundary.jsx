@@ -1,4 +1,8 @@
 import React from 'react';
+
+/**
+ * Remote app failed to load
+ */
 export default class RemoteErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { failed: false }; }
   static getDerivedStateFromError() { return { failed: true }; }
