@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+
 const useExistingServers = process.env.PLAYWRIGHT_USE_EXISTING_SERVERS === 'true';
 
 export default defineConfig({
@@ -19,20 +20,19 @@ export default defineConfig({
       },
    ],
    webServer: useExistingServers
-       ? undefined
-       : [
-          {
-             command: 'npm run dev -- --host 127.0.0.1',
-             cwd: '../consulting-opportunities',
-             url: 'http://localhost:5001/remoteEntry.js',
-             reuseExistingServer: false,
-             timeout: 30_000,
-          },
-          {
-             command: 'npm run dev -- --host 127.0.0.1',
-             url: 'http://localhost:5000',
-             reuseExistingServer: false,
-             timeout: 30_000,
-          },
-       ],
+      ? undefined
+      : [
+         {
+            command: 'npm run serve:remotes',
+            url: 'http://localhost:5002/remotes/remoteApp/1.0.2/remoteEntry.js',
+            reuseExistingServer: false,
+            timeout: 30_000,
+         },
+         {
+            command: 'npm run dev -- --host 127.0.0.1',
+            url: 'http://localhost:5000',
+            reuseExistingServer: false,
+            timeout: 30_000,
+         },
+      ],
 });
