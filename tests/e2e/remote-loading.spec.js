@@ -52,9 +52,11 @@ test('Host displays a configuration error when remoteApp is missing', async ({ p
     );
 });
 
-test('Host uses the Remote version selected by runtime configuration', async ({ page }) => {
-    // This verifies runtime selection against the two locally installed immutable artifacts.
+test('Host uses the Remote version selected by runtime configuration', async ({ browser }) => {
+    // Each version gets a fresh page so the federation runtime cannot reuse a loaded module.
     for (const version of ['1.0.1', '1.0.2']) {
+        const page = await browser.newPage();
+
         await page.route('**/microfrontends.json', async (route) => {
             await route.fulfill({
                 status: 200,
@@ -68,7 +70,7 @@ test('Host uses the Remote version selected by runtime configuration', async ({ 
             page.getByRole('button', { name: `Remote feature — v${version}` })
         ).toBeVisible();
 
-        await page.unroute('**/microfrontends.json');
+        await page.close();
     }
 });
 
