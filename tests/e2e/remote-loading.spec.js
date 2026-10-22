@@ -52,9 +52,10 @@ test('Host displays a configuration error when remoteApp is missing', async ({ p
     );
 });
 
-test('Host uses the Remote version selected by runtime configuration', async ({ browser }) => {
-    // Each version gets a fresh page so the federation runtime cannot reuse a loaded module.
-    for (const version of ['1.0.1', '1.0.2']) {
+test('Host can select a Remote version and roll back through runtime configuration', async ({ browser }) => {
+    // Fresh pages avoid reusing modules cached by the federation runtime.
+    // Both immutable artifacts must be present under local-remotes.
+    for (const version of ['1.0.2', '1.0.1']) {
         const page = await browser.newPage();
 
         await page.route('**/microfrontends.json', async (route) => {
