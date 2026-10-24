@@ -4,7 +4,7 @@ import { registerRemotes } from '@module-federation/enhanced/runtime';
 import App from './App.jsx';
 
 /**
- * Bootstrap
+ * Bootstrap the hgc-ab host application.
  * @returns {Promise<void>}
  */
 async function bootstrap() {
@@ -23,13 +23,19 @@ async function bootstrap() {
     registerRemotes([{
       name: 'remoteApp',
       entry: config.remoteApp,
-      type: 'module' // Load as esm module
+      type: 'module'
     }]);
-
   } catch (error) {
-    console.error('[Host platform] Could not initialize Remote config', error);
-    root.render(<main><h1>Host PoC</h1><p role="alert">Runtime configuration could not be loaded. Check the console.</p></main>); return;
+    console.error('[hgc-ab] Could not initialize remote configuration', error);
+    root.render(
+      <main>
+        <h1>hgc-ab</h1>
+        <p role="alert">Runtime configuration could not be loaded. Check the console.</p>
+      </main>
+    );
+    return;
   }
   root.render(<App />);
 }
+
 bootstrap();
