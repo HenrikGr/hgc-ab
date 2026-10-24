@@ -7,7 +7,7 @@ test('Host loads and displays the configured Remote version', async ({ page }) =
     await page.goto('/');
 
     await expect(
-        page.getByRole('heading', { name: 'Host PoC' })
+        page.getByRole('heading', { name: 'hgc-ab' })
     ).toBeVisible();
 
     await expect(
@@ -32,7 +32,7 @@ test('Host displays a fallback when Remote is unavailable', async ({ page }) => 
 
     // A Remote failure must not remove the Host shell.
     await expect(
-        page.getByRole('heading', { name: 'Host PoC' })
+        page.getByRole('heading', { name: 'hgc-ab' })
     ).toBeVisible();
 });
 
