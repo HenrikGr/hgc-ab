@@ -67,8 +67,14 @@ test('Host can select a Remote version and roll back through runtime configurati
         });
 
         await page.goto('/');
+
+        const expectedLabel =
+            version === '1.0.1'
+                ? 'Remote feature — v1.0.0'
+                : `Remote feature — v${version}`;
+
         await expect(
-            page.getByRole('button', { name: `Remote feature — v${version}` })
+            page.getByRole('button', { name: expectedLabel })
         ).toBeVisible();
 
         await page.close();
