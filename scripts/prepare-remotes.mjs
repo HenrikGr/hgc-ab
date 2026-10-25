@@ -56,7 +56,7 @@ async function listAll(url) {
 }
 
 function parseStableVersion(tagName) {
-   const match = tagName.match(/^v?(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$/);
+   const match = tagName.match(/^v?(0|[1-9]\d*)\\.(0|[1-9]\d*)\\.(0|[1-9]\d*)$/);
    return match ? match.slice(1).map(Number) : null;
 }
 
@@ -307,7 +307,7 @@ async function main() {
    manifest.errors = errors;
    manifest.preparedAt = new Date().toISOString();
 
-   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\\n`);
+   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
    console.log(`Updated manifest: ${path.relative(projectDirectory, manifestPath)} (${manifest.prepareStatus})`);
 
    if (manifest.prepareStatus !== 'ready') {
