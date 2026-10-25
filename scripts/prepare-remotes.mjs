@@ -18,7 +18,6 @@ const execFileAsync = promisify(execFile);
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectDirectory = path.resolve(scriptDirectory, '..');
 const manifestPath = path.join(projectDirectory, 'tests', 'remote-manifest.json');
-const remoteOutputRoot = path.join(projectDirectory, 'tests', 'remotes');
 const token = process.env.GH_TOKEN;
 
 const headers = {
@@ -76,9 +75,19 @@ function compareVersions(left, right) {
 
 async function findArtifact(repository, version) {
    const expectedName = `remote-${version.replace(/^v/, '')}`;
-   const artifacts = await listAll(
-      `https://api.github.com/repos/${repository}/actions/artifacts`,
-   );
+   const artifacts = [];
+
+   for (let page = 1; ; page += 1) {
+      const data = await githubJson(
+         `https://api.github.com/repos/${repository}/actions/artifacts?per_page=100&page=${page}`,
+      );
+      const pageArtifacts = data.artifacts ?? [];
+      artifacts.push(...pageArtifacts);
+
+      if (pageArtifacts.length < 100) {
+         break;
+      }
+   }
 
    return artifacts
       .filter((artifact) => artifact.name === expectedName && !artifact.expired)
