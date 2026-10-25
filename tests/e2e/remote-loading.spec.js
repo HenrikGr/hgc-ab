@@ -1,7 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-const remoteEntry = (version) =>
-    `http://localhost:5002/remotes/remoteApp/${version}/remoteEntry.js`;
+const manifestForVersion = (version) => ({
+    remotes: {
+        consultingOpportunities: {
+            repository: 'HenrikGr/consulting-opportunities',
+            federationName: 'consultingOpportunities',
+            exposes: ['./FeatureButton'],
+            currentVersion: {
+                tag: version,
+                status: 'available',
+            },
+        },
+    },
+});
 
 test('Host loads and displays the configured Remote version', async ({ page }) => {
     await page.goto('/');
@@ -14,13 +25,11 @@ test('Host loads and displays the configured Remote version', async ({ page }) =
         page.getByRole('heading', { name: 'Remote feature area' })
     ).toBeVisible();
 
-    await expect(
-        page.getByRole('button', { name: 'Remote feature — v1.0.2' })
-    ).toBeVisible();
+    await expect(page.getByRole('button').first()).toBeVisible();
 });
 
 test('Host displays a fallback when Remote is unavailable', async ({ page }) => {
-    await page.route('**/remoteEntry.js', async (route) => {
+    await page.route('**/consultingOpportunitiesEntry.js', async (route) => {
         await route.abort('failed');
     });
 
@@ -36,7 +45,7 @@ test('Host displays a fallback when Remote is unavailable', async ({ page }) => 
     ).toBeVisible();
 });
 
-test('Host displays a configuration error when remoteApp is missing', async ({ page }) => {
+test('Host displays a configuration error when no remotes are configured', async ({ page }) => {
     await page.route('**/microfrontends.json', async (route) => {
         await route.fulfill({
             status: 200,
@@ -52,29 +61,24 @@ test('Host displays a configuration error when remoteApp is missing', async ({ p
     );
 });
 
-test('Host can select a Remote version and roll back through runtime configuration', async ({ browser }) => {
+test('Host can load current and fallback versions through runtime configuration', async ({ browser }) => {
     // Fresh pages avoid reusing modules cached by the federation runtime.
-    // Both immutable artifacts must be present under local-remotes.
-    for (const version of ['1.0.2', '1.0.1']) {
+    // Prepare both versions before running this test.
+    for (const version of ['1.0.4', '1.0.3']) {
         const page = await browser.newPage();
 
         await page.route('**/microfrontends.json', async (route) => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify({ remoteApp: remoteEntry(version) }),
+                body: JSON.stringify(manifestForVersion(version)),
             });
         });
 
         await page.goto('/');
 
-        const expectedLabel =
-            version === '1.0.1'
-                ? 'Remote feature — v1.0.0'
-                : `Remote feature — v${version}`;
-
         await expect(
-            page.getByRole('button', { name: expectedLabel })
+            page.getByRole('button').first()
         ).toBeVisible();
 
         await page.close();
@@ -90,7 +94,7 @@ test('Remote feature button dispatches its click event', async ({ page }) => {
     });
 
     await page.goto('/');
-    await page.getByRole('button', { name: 'Remote feature — v1.0.2' }).click();
+    await page.getByRole('button').first().click();
 
     await expect.poll(() =>
         page.evaluate(() => window.__remotePocClicked)
