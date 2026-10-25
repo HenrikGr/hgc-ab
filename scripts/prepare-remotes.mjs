@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const execFileAsync = promisify(execFile);
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectDirectory = path.resolve(scriptDirectory, '..');
-const manifestPath = path.join(projectDirectory, 'tests', 'remote-manifest.json');
+const manifestPath = path.join(projectDirectory, 'public', 'microfrontends.json');
 const token = process.env.GH_TOKEN;
 
 const headers = {
@@ -56,7 +56,7 @@ async function listAll(url) {
 }
 
 function parseStableVersion(tagName) {
-   const match = tagName.match(/^v?(0|[1-9]\d*)\\.(0|[1-9]\d*)\\.(0|[1-9]\d*)$/);
+   const match = tagName.match(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
    return match ? match.slice(1).map(Number) : null;
 }
 
@@ -174,7 +174,6 @@ async function installVersion(remoteKey, remote, versionInfo) {
       const entryFile = entryFiles[0];
       const sourceDirectory = path.dirname(entryFile);
       const relativeDestination = path.join(
-         'remotes',
          remoteKey,
          version.replace(/^v/, ''),
       );
