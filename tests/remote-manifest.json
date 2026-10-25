@@ -1,0 +1,25 @@
+{
+  "remotes": {
+    "consultingOpportunities": {
+      "repository": "HenrikGr/consulting-opportunities",
+      "federationName": "consultingOpportunities",
+      "exposes": [
+        "./FeatureButton"
+      ],
+      "currentVersion": {
+        "tag": null,
+        "status": "not_prepared",
+        "artifactPath": null,
+        "error": null
+      },
+      "fallbackVersion": {
+        "tag": null,
+        "status": "not_prepared",
+        "artifactPath": null,
+        "error": null
+      }
+    }
+  },
+  "prepareStatus": "not_prepared",
+  "errors": []
+}
