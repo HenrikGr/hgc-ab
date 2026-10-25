@@ -1,0 +1,11 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+
+# Local secrets and environment overrides
+.env.local
+.env.*.local
+
+# Downloaded GitHub Actions artifacts
+tests/remotes/
