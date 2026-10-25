@@ -16,15 +16,31 @@ async function bootstrap() {
     }
 
     const config = await response.json();
-    if (!config.remoteApp) {
-      throw new Error('Runtime config is missing remoteApp');
+    const remotes = Object.entries(config.remotes ?? {});
+    if (remotes.length === 0) {
+      throw new Error('Runtime manifest does not define any remotes');
     }
 
-    registerRemotes([{
-      name: 'remoteApp',
-      entry: config.remoteApp,
-      type: 'module'
-    }]);
+    const baseUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:5002'
+      : window.location.origin;
+
+    const runtimeRemotes = remotes.map(([key, remote]) => {
+      const version = remote.currentVersion;
+      if (!version?.tag || version.status !== 'available') {
+        throw new Error(`Remote "${key}" has no available current version`);
+      }
+
+      const entryFile = `${remote.federationName}Entry.js`;
+      const entryPath = `${key}/${version.tag}/${entryFile}`;
+      return {
+        name: remote.federationName,
+        entry: `${baseUrl}/${entryPath}`,
+        type: 'module',
+      };
+    });
+
+    registerRemotes(runtimeRemotes);
   } catch (error) {
     console.error('[hgc-ab] Could not initialize remote configuration', error);
     root.render(
