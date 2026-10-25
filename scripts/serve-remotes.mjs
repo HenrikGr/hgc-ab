@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const remoteRoot = path.resolve(scriptDirectory, '../local-remotes');
+const remoteRoot = path.resolve(scriptDirectory, '../tests/remotes');
 const port = 5002;
 
 const contentTypes = {
