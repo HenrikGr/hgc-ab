@@ -21,9 +21,9 @@ async function bootstrap() {
       throw new Error('Runtime manifest does not define any remotes');
     }
 
-    const baseUrl = window.location.hostname === 'localhost'
-      ? 'http://localhost:5002'
-      : window.location.origin;
+    const remoteBasePath = (import.meta.env.VITE_REMOTE_BASE_PATH ?? '')
+      .replace(/\/+$/, '');
+    const baseUrl = `${window.location.origin}${remoteBasePath}`;
 
     const runtimeRemotes = remotes.map(([key, remote]) => {
       const version = remote.currentVersion;
