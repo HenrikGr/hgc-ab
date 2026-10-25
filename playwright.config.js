@@ -23,12 +23,6 @@ export default defineConfig({
       ? undefined
       : [
          {
-            command: 'npm run serve:remotes',
-            url: 'http://localhost:5002/remotes/remoteApp/1.0.2/remoteEntry.js',
-            reuseExistingServer: false,
-            timeout: 30_000,
-         },
-         {
             command: 'npm run dev -- --host 127.0.0.1',
             url: 'http://localhost:5000',
             reuseExistingServer: false,
