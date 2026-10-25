@@ -12,7 +12,7 @@
       "test:e2e:ui": "playwright test --ui",
       "download:remotes": "node scripts/download-remote-artifacts.mjs",
       "serve:remotes": "node scripts/serve-remotes.mjs",
-      "prepare:remotes": "node scripts/prepare-remotes.mjs"
+      "prepare:remotes": "node --env-file=.env.local scripts/prepare-remotes.mjs"
    },
    "prettier": {
       "tabWidth": 3,
