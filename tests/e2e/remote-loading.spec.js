@@ -88,7 +88,7 @@ test('Host can load current and fallback versions through runtime configuration'
 test('Remote feature button dispatches its click event', async ({ page }) => {
     await page.addInitScript(() => {
         window.__remotePocClicked = false;
-        window.addEventListener('remote-poc:clicked', () => {
+        window.addEventListener('consulting-opportunities:clicked', () => {
             window.__remotePocClicked = true;
         });
     });
