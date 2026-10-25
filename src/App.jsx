@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { loadRemote } from '@module-federation/enhanced/runtime';
 import RemoteErrorBoundary from './RemoteErrorBoundary.jsx';
 
-const RemoteFeatureButton = lazy(() => loadRemote('remoteApp/FeatureButton'));
+const RemoteFeatureButton = lazy(() => loadRemote('consultingOpportunities/FeatureButton'));
 
 export default function App() {
   return (
