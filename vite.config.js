@@ -9,7 +9,7 @@ export default defineConfig({
    plugins: [
       react(),
       federation({
-         name: "hostApp",
+         name: "hgcAb",
          remotes: {},
          shared: {
             react: { singleton: true },

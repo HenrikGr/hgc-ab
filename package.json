@@ -1,5 +1,5 @@
 {
-   "name": "hgc-ab-host-poc",
+   "name": "hgc-ab",
    "private": true,
    "version": "1.0.0",
    "type": "module",
