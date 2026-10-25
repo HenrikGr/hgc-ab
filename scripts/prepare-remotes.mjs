@@ -28,30 +28,21 @@ const headers = {
 
 async function githubJson(url) {
    const response = await fetch(url, { headers });
-
    if (!response.ok) {
       throw new Error(`GitHub API returned ${response.status} for ${url}`);
    }
-
    return response.json();
 }
 
 async function listAll(url) {
    const items = [];
-
    for (let page = 1; ; page += 1) {
       const separator = url.includes('?') ? '&' : '?';
       const pageItems = await githubJson(`${url}${separator}per_page=100&page=${page}`);
-      if (!Array.isArray(pageItems) || pageItems.length === 0) {
-         break;
-      }
-
+      if (!Array.isArray(pageItems) || pageItems.length === 0) break;
       items.push(...pageItems);
-      if (pageItems.length < 100) {
-         break;
-      }
+      if (pageItems.length < 100) break;
    }
-
    return items;
 }
 
@@ -63,18 +54,15 @@ function parseStableVersion(tagName) {
 function compareVersions(left, right) {
    const a = parseStableVersion(left);
    const b = parseStableVersion(right);
-
    for (let index = 0; index < 3; index += 1) {
-      if (a[index] !== b[index]) {
-         return b[index] - a[index];
-      }
+      if (a[index] !== b[index]) return b[index] - a[index];
    }
-
    return 0;
 }
 
 async function findArtifact(repository, version) {
-   const expectedName = `remote-${version.replace(/^v/, '')}`;
+   // Keep this name aligned with .github/workflows/remote-ci.yml.
+   const expectedName = `${repository.split('/').at(-1)}-${version.replace(/^v/, '')}`;
    const artifacts = [];
 
    for (let page = 1; ; page += 1) {
@@ -83,10 +71,7 @@ async function findArtifact(repository, version) {
       );
       const pageArtifacts = data.artifacts ?? [];
       artifacts.push(...pageArtifacts);
-
-      if (pageArtifacts.length < 100) {
-         break;
-      }
+      if (pageArtifacts.length < 100) break;
    }
 
    return artifacts
@@ -97,17 +82,14 @@ async function findArtifact(repository, version) {
 async function downloadArtifact(repository, artifact, destination) {
    const url = `https://api.github.com/repos/${repository}/actions/artifacts/${artifact.id}/zip`;
    const response = await fetch(url, { headers });
-
    if (!response.ok) {
       throw new Error(`Artifact download returned ${response.status} for ${artifact.name}`);
    }
-
    await writeFile(destination, Buffer.from(await response.arrayBuffer()));
 }
 
 async function findFiles(directory, predicate, results = []) {
    const entries = await readdir(directory, { withFileTypes: true });
-
    for (const entry of entries) {
       const fullPath = path.join(directory, entry.name);
       if (entry.isDirectory()) {
@@ -116,7 +98,6 @@ async function findFiles(directory, predicate, results = []) {
          results.push(fullPath);
       }
    }
-
    return results;
 }
 
@@ -135,55 +116,39 @@ async function installVersion(remoteKey, remote, versionInfo) {
       if (!token) {
          throw new Error('GH_TOKEN is required to download private GitHub Actions artifacts.');
       }
-
       const artifact = await findArtifact(repository, version);
       if (!artifact) {
-         throw new Error(`No unexpired Actions artifact named "remote-${version.replace(/^v/, '')}" was found.`);
+         const expectedName = `${repository.split('/').at(-1)}-${version.replace(/^v/, '')}`;
+         throw new Error(`No unexpired Actions artifact named "${expectedName}" was found.`);
       }
 
       temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'prepare-remote-'));
       const artifactZip = path.join(temporaryDirectory, 'actions-artifact.zip');
       const artifactContents = path.join(temporaryDirectory, 'artifact');
-      const extractedContents = path.join(temporaryDirectory, 'extracted');
-
       await downloadArtifact(repository, artifact, artifactZip);
       await mkdir(artifactContents, { recursive: true });
       await execFileAsync('unzip', ['-q', artifactZip, '-d', artifactContents]);
 
-      const nestedZips = await findFiles(artifactContents, (name) => name.endsWith('.zip'));
-      if (nestedZips.length === 0) {
-         throw new Error('The Actions artifact did not contain a remote ZIP archive.');
-      }
-
-      await mkdir(extractedContents, { recursive: true });
-      for (const [index, zipFile] of nestedZips.entries()) {
-         const destination = path.join(extractedContents, String(index));
-         await mkdir(destination, { recursive: true });
-         await execFileAsync('unzip', ['-q', zipFile, '-d', destination]);
-      }
-
+      // upload-artifact stores the contents of release/ directly. The current
+      // remote workflow deliberately avoids a nested ZIP, so locate the entry
+      // in the extracted artifact instead of expecting a second archive.
       const entryFileName = `${remote.federationName}Entry.js`;
-      const entryFiles = await findFiles(
-         extractedContents,
-         (name) => name === entryFileName,
-      );
+      const entryFiles = await findFiles(artifactContents, (name) => name === entryFileName);
       if (entryFiles.length === 0) {
          throw new Error(`Expected federation entry "${entryFileName}" was not found in the downloaded artifact.`);
       }
+      if (entryFiles.length > 1) {
+         throw new Error(`Found multiple federation entries named "${entryFileName}" in the downloaded artifact.`);
+      }
 
       const entryFile = entryFiles[0];
-      const sourceDirectory = path.dirname(entryFile);
-      const relativeDestination = path.join(
-         remoteKey,
-         version.replace(/^v/, ''),
-      );
-      const destinationDirectory = path.join(projectDirectory, 'tests', relativeDestination);
+      const entryDirectory = path.dirname(entryFile);
+      const relativeDestination = path.join(remoteKey, version.replace(/^v/, ''));
+      const destinationDirectory = path.join(projectDirectory, 'tests', 'remotes', relativeDestination);
 
       await rm(destinationDirectory, { recursive: true, force: true });
       await mkdir(path.dirname(destinationDirectory), { recursive: true });
-      await cp(sourceDirectory, destinationDirectory, { recursive: true });
-
-      // Verify the entry file remains present after installation.
+      await cp(entryDirectory, destinationDirectory, { recursive: true });
       await access(path.join(destinationDirectory, entryFileName));
 
       versionInfo.status = 'available';
@@ -196,25 +161,13 @@ async function installVersion(remoteKey, remote, versionInfo) {
       versionInfo.error = error instanceof Error ? error.message : String(error);
       console.error(`Could not prepare ${remoteKey}@${version}: ${versionInfo.error}`);
    } finally {
-      if (temporaryDirectory) {
-         await rm(temporaryDirectory, { recursive: true, force: true });
-      }
+      if (temporaryDirectory) await rm(temporaryDirectory, { recursive: true, force: true });
    }
 }
 
 async function prepareRemote(remoteKey, remote, errors) {
-   remote.currentVersion = {
-      tag: null,
-      status: 'unavailable',
-      artifactPath: null,
-      error: null,
-   };
-   remote.fallbackVersion = {
-      tag: null,
-      status: 'missing',
-      artifactPath: null,
-      error: null,
-   };
+   remote.currentVersion = { tag: null, status: 'unavailable', artifactPath: null, error: null };
+   remote.fallbackVersion = { tag: null, status: 'missing', artifactPath: null, error: null };
 
    let tags;
    try {
@@ -222,28 +175,16 @@ async function prepareRemote(remoteKey, remote, errors) {
    } catch (error) {
       remote.currentVersion.error = error instanceof Error ? error.message : String(error);
       remote.fallbackVersion.error = 'Version discovery failed; no fallback version could be selected.';
-      errors.push({
-         remote: remoteKey,
-         code: 'TAG_LOOKUP_FAILED',
-         message: remote.currentVersion.error,
-      });
+      errors.push({ remote: remoteKey, code: 'TAG_LOOKUP_FAILED', message: remote.currentVersion.error });
       return;
    }
 
-   const versions = tags
-      .map((tag) => tag.name)
-      .filter((tag) => parseStableVersion(tag))
-      .sort(compareVersions);
-
+   const versions = tags.map((tag) => tag.name).filter(parseStableVersion).sort(compareVersions);
    if (versions.length === 0) {
       remote.currentVersion.status = 'missing';
       remote.currentVersion.error = 'No stable semantic-version Git tags were found.';
       remote.fallbackVersion.error = 'No fallback version can be selected without stable tags.';
-      errors.push({
-         remote: remoteKey,
-         code: 'NO_STABLE_TAGS',
-         message: remote.currentVersion.error,
-      });
+      errors.push({ remote: remoteKey, code: 'NO_STABLE_TAGS', message: remote.currentVersion.error });
       return;
    }
 
@@ -253,17 +194,11 @@ async function prepareRemote(remoteKey, remote, errors) {
    remote.fallbackVersion.status = versions[1] ? 'pending' : 'missing';
    if (!versions[1]) {
       remote.fallbackVersion.error = 'No older stable Git tag is available as a fallback.';
-      errors.push({
-         remote: remoteKey,
-         code: 'FALLBACK_NOT_FOUND',
-         message: remote.fallbackVersion.error,
-      });
+      errors.push({ remote: remoteKey, code: 'FALLBACK_NOT_FOUND', message: remote.fallbackVersion.error });
    }
 
    await installVersion(remoteKey, remote, remote.currentVersion);
-   if (remote.fallbackVersion.tag) {
-      await installVersion(remoteKey, remote, remote.fallbackVersion);
-   }
+   if (remote.fallbackVersion.tag) await installVersion(remoteKey, remote, remote.fallbackVersion);
 
    for (const [versionName, versionInfo] of [
       ['currentVersion', remote.currentVersion],
@@ -299,8 +234,7 @@ async function main() {
    manifest.prepareStatus = errors.length === 0
       ? 'ready'
       : Object.values(manifest.remotes ?? {}).some((remote) =>
-         remote.currentVersion?.status === 'available' ||
-         remote.fallbackVersion?.status === 'available')
+         remote.currentVersion?.status === 'available' || remote.fallbackVersion?.status === 'available')
          ? 'partial'
          : 'failed';
    manifest.errors = errors;
@@ -308,10 +242,7 @@ async function main() {
 
    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
    console.log(`Updated manifest: ${path.relative(projectDirectory, manifestPath)} (${manifest.prepareStatus})`);
-
-   if (manifest.prepareStatus !== 'ready') {
-      process.exitCode = 1;
-   }
+   if (manifest.prepareStatus !== 'ready') process.exitCode = 1;
 }
 
 await main();
