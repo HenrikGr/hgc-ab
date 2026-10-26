@@ -1,14 +1,16 @@
 import React, { Suspense, lazy } from 'react';
-import { loadRemote } from '@module-federation/enhanced/runtime';
+import { loadRemoteWithFallback } from './remoteLoader.js';
 import RemoteErrorBoundary from './RemoteErrorBoundary.jsx';
 
-const RemoteFeatureButton = lazy(() => loadRemote('consultingOpportunities/FeatureButton'));
+const RemoteFeatureButton = lazy(() =>
+  loadRemoteWithFallback('consultingOpportunities', './FeatureButton'),
+);
 
 export default function App() {
   return (
     <main style={{ fontFamily: 'system-ui', padding: '2rem', maxWidth: 800, margin: '0 auto' }}>
       <h1>hgc-ab</h1>
-      <p>Host application; Remote URL comes from runtime configuration.</p>
+      <p>Host application; Remote version and entry URLs come from the Remote manifest.</p>
       <section>
         <h2>Remote feature area</h2>
         <RemoteErrorBoundary>
