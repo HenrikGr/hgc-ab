@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const entryUrl = (version) =>
-    `http://127.0.0.1:5000/__remotes/consultingOpportunities/${version}/consultingOpportunitiesEntry.js`;
+const releaseEntryUrl = (version) =>
+    `https://github.com/HenrikGr/consulting-opportunities/releases/download/v${version}/consultingOpportunitiesEntry.js`;
 
-const remoteManifest = (currentVersion = '1.0.4', fallbackVersion = '1.0.3') => ({
+const remoteManifest = (currentVersion = '1.0.6', fallbackVersion = '1.0.5') => ({
     schemaVersion: 1,
     remote: {
         key: 'consultingOpportunities',
@@ -14,12 +14,12 @@ const remoteManifest = (currentVersion = '1.0.4', fallbackVersion = '1.0.3') => 
     currentVersion: {
         version: currentVersion,
         tag: `v${currentVersion}`,
-        entryUrl: entryUrl(currentVersion),
+        entryUrl: releaseEntryUrl(currentVersion),
     },
     fallbackVersion: fallbackVersion ? {
         version: fallbackVersion,
         tag: `v${fallbackVersion}`,
-        entryUrl: entryUrl(fallbackVersion),
+        entryUrl: releaseEntryUrl(fallbackVersion),
     } : null,
 });
 
@@ -46,36 +46,50 @@ async function mockRemoteManifest(page, manifest = remoteManifest()) {
     });
 }
 
-test('Host loads the current Remote version from its manifest', async ({ page }) => {
+test('Host loads current Remote release 1.0.6 from its manifest', async ({ page }) => {
     await mockRemoteManifest(page);
 
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'hgc-ab' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Remote feature area' })).toBeVisible();
-    await expect(page.getByRole('button').first()).toContainText('1.0.4');
+    await expect(page.getByRole('button').first()).toContainText('1.0.6');
 });
 
-test('Host retries with the manifest fallback when the current entry fails', async ({ page }) => {
-    await mockRemoteManifest(page, remoteManifest('1.0.4', '1.0.3'));
-    await page.route('**/consultingOpportunities/1.0.4/consultingOpportunitiesEntry.js', async (route) => {
+test('Host loads fallback release 1.0.5 when current release 1.0.6 fails', async ({ page }) => {
+    await mockRemoteManifest(page, remoteManifest('1.0.6', '1.0.5'));
+    let currentEntryRequested = false;
+    let fallbackEntryRequested = false;
+
+    await page.route(releaseEntryUrl('1.0.6'), async (route) => {
+        currentEntryRequested = true;
         await route.abort('failed');
+    });
+    await page.route(releaseEntryUrl('1.0.5'), async (route) => {
+        fallbackEntryRequested = true;
+        await route.continue();
     });
 
     await page.goto('/');
 
-    await expect(page.getByRole('button').first()).toContainText('1.0.3');
+    await expect(page.getByRole('button').first()).toContainText('1.0.5');
     await expect(page.getByRole('heading', { name: 'hgc-ab' })).toBeVisible();
+    expect(currentEntryRequested).toBe(true);
+    expect(fallbackEntryRequested).toBe(true);
 });
 
-test('Host remains available when current and fallback Remote entries both fail', async ({ page }) => {
-    await mockRemoteManifest(page, remoteManifest('1.0.4', '1.0.3'));
-    await page.route('**/consultingOpportunitiesEntry.js', async (route) => {
+test('Host remains available and explains the error when both releases fail', async ({ page }) => {
+    await mockRemoteManifest(page, remoteManifest('1.0.6', '1.0.5'));
+    await page.route('**/releases/download/v1.0.6/consultingOpportunitiesEntry.js', async (route) => {
+        await route.abort('failed');
+    });
+    await page.route('**/releases/download/v1.0.5/consultingOpportunitiesEntry.js', async (route) => {
         await route.abort('failed');
     });
 
     await page.goto('/');
 
     await expect(page.getByRole('alert')).toContainText('Remote feature unavailable.');
+    await expect(page.getByRole('alert')).toContainText('Host remains available.');
     await expect(page.getByRole('heading', { name: 'hgc-ab' })).toBeVisible();
 });
 
