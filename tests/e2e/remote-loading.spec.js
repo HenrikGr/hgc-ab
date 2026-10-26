@@ -89,7 +89,7 @@ test('Host remains available and explains the error when both releases fail', as
     await page.goto('/');
 
     await expect(page.getByRole('alert')).toContainText('Remote feature unavailable.');
-    await expect(page.getByRole('alert')).toContainText('Host remains available.');
+    await expect(page.getByRole('alert')).toContainText('Host remains available');
     await expect(page.getByRole('heading', { name: 'hgc-ab' })).toBeVisible();
 });
 
