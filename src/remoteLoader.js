@@ -1,6 +1,25 @@
 import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
 
 const remoteManifests = new Map();
+const REMOTE_RELEASE_PREFIX =
+  'https://github.com/HenrikGr/consulting-opportunities/releases/';
+
+/**
+ * In local Host development, route GitHub Release requests through Vite so
+ * browser CORS rules remain enabled. Deployed environments keep their URLs.
+ */
+export function resolveRemoteAssetUrl(url) {
+  if (
+    typeof window !== 'undefined' &&
+    ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+    typeof url === 'string' &&
+    url.startsWith(REMOTE_RELEASE_PREFIX)
+  ) {
+    return url.replace(REMOTE_RELEASE_PREFIX, '/__remote_assets/releases/');
+  }
+
+  return url;
+}
 
 function validateManifest(key, manifest) {
   if (
@@ -25,16 +44,12 @@ function validateManifest(key, manifest) {
   }
 }
 
-/**
- * Force replacement is intentional: the runtime must discard the failed
- * current-version registration and its loaded-module cache before fallback.
- */
 function registerVersion(manifest, version) {
   registerRemotes(
     [
       {
         name: manifest.remote.federationName,
-        entry: version.entryUrl,
+        entry: resolveRemoteAssetUrl(version.entryUrl),
         type: 'module',
       },
     ],
