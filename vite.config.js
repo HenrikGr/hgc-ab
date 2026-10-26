@@ -15,7 +15,10 @@ function remoteReleaseProxy() {
     }
 
     const upstreamPath = requestUrl.pathname.slice('/__remote_assets'.length);
-    const upstreamUrl = new URL(upstreamPath + requestUrl.search, 'https://github.com');
+    const upstreamUrl = new URL(
+      `/HenrikGr/consulting-opportunities${upstreamPath}${requestUrl.search}`,
+      'https://github.com',
+    );
 
     try {
       // Follow GitHub's redirect to release-assets.githubusercontent.com on the server,
