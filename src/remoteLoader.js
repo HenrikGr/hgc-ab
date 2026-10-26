@@ -36,7 +36,7 @@ export async function loadRemoteWithFallback(key, exposedModule) {
     throw new Error(`Remote "${key}" was not configured`);
   }
 
-  const request = `${manifest.remote.federationName}/${exposedModule.replace(/^\\.\\//, '')}`;
+  const request = `${manifest.remote.federationName}/${(exposedModule.startsWith('./') ? exposedModule.slice(2) : exposedModule)}`;
 
   try {
     return await loadRemote(request);
