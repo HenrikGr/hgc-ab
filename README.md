@@ -6,6 +6,10 @@ The Remote manifest supplies the current and fallback release entry URLs. The Ho
 
 The current PoC manifest is published by the `HenrikGr/consulting-opportunities` Remote repository. Release assets should be treated as immutable after publication.
 
+## Architecture and integration contract
+
+See [Microfrontend Architecture](docs/MICROFRONTEND-ARCHITECTURE.md) for the Host/Remote responsibilities, runtime manifest contract, GitHub Release distribution model, local proxy, failure handling, and release workflow.
+
 ## Local development and verification
 
 - `npm run dev` starts the Host.
