@@ -9,13 +9,7 @@
       "preview": "vite preview --host 0.0.0.0",
       "test:e2e": "playwright test",
       "test:e2e:local": "PLAYWRIGHT_USE_EXISTING_SERVERS=true playwright test",
-      "test:e2e:ui": "playwright test --ui",
-      "download:remotes": "node scripts/download-remote-artifacts.mjs",
-      "prepare:remotes": "node --env-file=.env.local scripts/prepare-remotes.mjs"
-   },
-   "prettier": {
-      "tabWidth": 3,
-      "printWidth": 90
+      "test:e2e:ui": "playwright test --ui"
    },
    "dependencies": {
       "@module-federation/enhanced": "^0.21.6",
@@ -29,5 +23,9 @@
       "vitest": "^5.0.5",
       "@playwright/test": "^1.64.1",
       "playwright": "^1.64.1"
+   },
+   "prettier": {
+      "tabWidth": 3,
+      "printWidth": 90
    }
 }
