@@ -79,10 +79,10 @@ test('Host loads fallback release 1.0.5 when current release 1.0.6 fails', async
 
 test('Host remains available and explains the error when both releases fail', async ({ page }) => {
     await mockRemoteManifest(page, remoteManifest('1.0.6', '1.0.5'));
-    await page.route(releaseEntryUrl('1.0.6'), async (route) => {
+    await page.route(`**${releaseEntryUrl('1.0.6')}`, async (route) => {
         await route.abort('failed');
     });
-    await page.route(releaseEntryUrl('1.0.5'), async (route) => {
+    await page.route(`**${releaseEntryUrl('1.0.5')}`, async (route) => {
         await route.abort('failed');
     });
 
