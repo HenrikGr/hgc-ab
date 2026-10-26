@@ -60,11 +60,11 @@ test('Host loads fallback release 1.0.5 when current release 1.0.6 fails', async
     let currentEntryRequested = false;
     let fallbackEntryRequested = false;
 
-    await page.route(releaseEntryUrl('1.0.6'), async (route) => {
+    await page.route(`**${releaseEntryUrl('1.0.6')}`, async (route) => {
         currentEntryRequested = true;
         await route.abort('failed');
     });
-    await page.route(releaseEntryUrl('1.0.5'), async (route) => {
+    await page.route(`**${releaseEntryUrl('1.0.5')}`, async (route) => {
         fallbackEntryRequested = true;
         await route.continue();
     });
