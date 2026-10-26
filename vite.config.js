@@ -27,7 +27,14 @@ function remoteReleaseProxy() {
         headers: { accept: req.headers.accept ?? '*/*' },
         redirect: 'follow',
       });
-      const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+      const upstreamContentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+      // GitHub release downloads may be served as application/octet-stream even when
+      // the asset is JavaScript. Browsers require a JavaScript MIME type for module scripts.
+      const contentType = upstreamUrl.pathname.endsWith('.js')
+        ? 'text/javascript; charset=utf-8'
+        : upstreamUrl.pathname.endsWith('.json')
+          ? 'application/json; charset=utf-8'
+          : upstreamContentType;
       let body = Buffer.from(await upstream.arrayBuffer());
 
       if (
