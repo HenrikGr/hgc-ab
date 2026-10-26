@@ -1,12 +1,13 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { configureRemote } from './remoteLoader.js';
+import { configureRemote, resolveRemoteAssetUrl } from './remoteLoader.js';
 import App from './App.jsx';
 
 async function fetchJson(url, label) {
-  const response = await fetch(url, { cache: 'no-store' });
+  const resolvedUrl = resolveRemoteAssetUrl(url);
+  const response = await fetch(resolvedUrl, { cache: 'no-store' });
   if (!response.ok) {
-    throw new Error(`${label} request failed: ${response.status} (${url})`);
+    throw new Error(`${label} request failed: ${response.status} (${resolvedUrl})`);
   }
   return response.json();
 }
