@@ -1,13 +1,70 @@
-async function handleRequest(req, res, next, config) {
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { REMOTE_ASSET_PROXY_PREFIX } from '../src/app/remote-loading/constants.js';
+
+function getConfiguredRepositories() {
+  const configPath = resolve(process.cwd(), 'public/microfrontends.json');
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  const repositories = new Set();
+
+  for (const [key, remote] of Object.entries(config.remotes ?? {})) {
+    let manifestUrl;
+
+    try {
+      manifestUrl = new URL(remote.manifestUrl);
+    } catch {
+      throw new Error('Remote "' + key + '" has an invalid manifestUrl in microfrontends.json');
+    }
+
+    const match = manifestUrl.pathname.match(/^\/([^/]+)\/([^/]+)\/releases\//);
+    if (manifestUrl.hostname !== 'github.com' || !match) {
+      throw new Error('Remote "' + key + '" manifestUrl must point to a GitHub Releases URL');
+    }
+
+    repositories.add(match[1] + '/' + match[2]);
+  }
+
+  return repositories;
+}
+
+async function handleRequest(req, res, next, allowedRepositories) {
   const requestUrl = new URL(req.url ?? '/', 'http://localhost');
-  if (!requestUrl.pathname.startsWith(config.remoteAssetProxyPrefix)) {
+  if (!requestUrl.pathname.startsWith(REMOTE_ASSET_PROXY_PREFIX)) {
     next();
     return;
   }
 
-  const upstreamPath = requestUrl.pathname.slice(config.remoteAssetProxyPrefix.length - 1);
+  const relativePath = requestUrl.pathname.slice(REMOTE_ASSET_PROXY_PREFIX.length);
+  const match = relativePath.match(/^([^/]+)\/([^/]+)\/releases\/(.+)$/);
+  if (!match) {
+    res.statusCode = 400;
+    res.end('Invalid Remote release asset path');
+    return;
+  }
+
+  const [, owner, repository, releasePath] = match;
+  const repositoryPath = owner + '/' + repository;
+  if (!allowedRepositories.has(repositoryPath)) {
+    res.statusCode = 403;
+    res.end('Remote repository is not configured in microfrontends.json');
+    return;
+  }
+
+  if (
+    releasePath.split('/').some((segment) =>
+      !segment ||
+      segment === '.' ||
+      segment === '..' ||
+      /%2f|%5c/i.test(segment)
+    )
+  ) {
+    res.statusCode = 400;
+    res.end('Invalid Remote release asset path');
+    return;
+  }
+
   const upstreamUrl = new URL(
-    `${config.remoteRepositoryPath}/releases/${upstreamPath.replace(/^releases\//, '')}${requestUrl.search}`,
+    '/' + repositoryPath + '/releases/' + releasePath + requestUrl.search,
     'https://github.com',
   );
 
@@ -32,7 +89,10 @@ async function handleRequest(req, res, next, config) {
       upstreamUrl.pathname.endsWith('.json')
     ) {
       body = Buffer.from(
-        body.toString('utf8').replaceAll(config.remoteReleasePrefix, config.remoteAssetProxyPrefix),
+        body.toString('utf8').replace(
+          /https:\/\/github\.com\/([^/]+\/[^/]+\/releases\/)/g,
+          REMOTE_ASSET_PROXY_PREFIX + '$1',
+        ),
         'utf8',
       );
     }
@@ -44,25 +104,18 @@ async function handleRequest(req, res, next, config) {
   } catch (error) {
     res.statusCode = 502;
     res.setHeader('content-type', 'text/plain; charset=utf-8');
-    res.end(`Remote release proxy failed: ${error.message}`);
+    res.end('Remote release proxy failed: ' + error.message);
   }
 }
 
-/** Vite dev/preview proxy for assets published in the Remote's GitHub Releases. */
-export function remoteReleaseProxy(config) {
-  for (const name of ['remoteReleasePrefix', 'remoteAssetProxyPrefix', 'remoteRepositoryPath']) {
-    if (typeof config?.[name] !== 'string' || config[name].trim() === '') {
-      throw new Error(`Missing required remote release proxy configuration: ${name}`);
-    }
-  }
-
-  const configured = {
-    remoteReleasePrefix: config.remoteReleasePrefix,
-    remoteAssetProxyPrefix: config.remoteAssetProxyPrefix,
-    remoteRepositoryPath: config.remoteRepositoryPath,
-  };
-
-  const middleware = (req, res, next) => handleRequest(req, res, next, configured);
+/**
+ * Vite dev/preview proxy for GitHub Release assets.
+ * Allowed repositories are derived from public/microfrontends.json.
+ */
+export function remoteReleaseProxy() {
+  const allowedRepositories = getConfiguredRepositories();
+  const middleware = (req, res, next) =>
+    handleRequest(req, res, next, allowedRepositories);
 
   return {
     name: 'remote-release-proxy',

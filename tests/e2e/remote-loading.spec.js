@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+const remoteAssetPath = '/__remote_assets/HenrikGr/consulting-opportunities/releases';
 const releaseEntryUrl = (version) =>
-    `/__remote_assets/releases/download/v${version}/consultingOpportunitiesEntry.js`;
+    remoteAssetPath + '/download/v' + version + '/consultingOpportunitiesEntry.js';
 
 const remoteManifest = (currentVersion = '1.0.6', fallbackVersion = '1.0.5') => ({
     schemaVersion: 1,
@@ -13,13 +14,15 @@ const remoteManifest = (currentVersion = '1.0.6', fallbackVersion = '1.0.5') => 
     },
     currentVersion: {
         version: currentVersion,
-        tag: `v${currentVersion}`,
-        entryUrl: `https://github.com/HenrikGr/consulting-opportunities/releases/download/v${currentVersion}/consultingOpportunitiesEntry.js`,
+        tag: 'v' + currentVersion,
+        entryUrl: 'https://github.com/HenrikGr/consulting-opportunities/releases/download/v' +
+            currentVersion + '/consultingOpportunitiesEntry.js',
     },
     fallbackVersion: fallbackVersion ? {
         version: fallbackVersion,
-        tag: `v${fallbackVersion}`,
-        entryUrl: `https://github.com/HenrikGr/consulting-opportunities/releases/download/v${fallbackVersion}/consultingOpportunitiesEntry.js`,
+        tag: 'v' + fallbackVersion,
+        entryUrl: 'https://github.com/HenrikGr/consulting-opportunities/releases/download/v' +
+            fallbackVersion + '/consultingOpportunitiesEntry.js',
     } : null,
 });
 
@@ -31,13 +34,13 @@ async function mockRemoteManifest(page, manifest = remoteManifest()) {
             body: JSON.stringify({
                 remotes: {
                     consultingOpportunities: {
-                        manifestUrl: '/__remote_assets/releases/latest/download/remote-manifest.json',
+                        manifestUrl: remoteAssetPath + '/latest/download/remote-manifest.json',
                     },
                 },
             }),
         });
     });
-    await page.route('**/__remote_assets/releases/latest/download/remote-manifest.json', async (route) => {
+    await page.route('**' + remoteAssetPath + '/latest/download/remote-manifest.json', async (route) => {
         await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -60,11 +63,11 @@ test('Host loads fallback release 1.0.5 when current release 1.0.6 fails', async
     let currentEntryRequested = false;
     let fallbackEntryRequested = false;
 
-    await page.route(`**${releaseEntryUrl('1.0.6')}`, async (route) => {
+    await page.route('**' + releaseEntryUrl('1.0.6'), async (route) => {
         currentEntryRequested = true;
         await route.abort('failed');
     });
-    await page.route(`**${releaseEntryUrl('1.0.5')}`, async (route) => {
+    await page.route('**' + releaseEntryUrl('1.0.5'), async (route) => {
         fallbackEntryRequested = true;
         await route.continue();
     });
@@ -79,10 +82,10 @@ test('Host loads fallback release 1.0.5 when current release 1.0.6 fails', async
 
 test('Host remains available and explains the error when both releases fail', async ({ page }) => {
     await mockRemoteManifest(page, remoteManifest('1.0.6', '1.0.5'));
-    await page.route(`**${releaseEntryUrl('1.0.6')}`, async (route) => {
+    await page.route('**' + releaseEntryUrl('1.0.6'), async (route) => {
         await route.abort('failed');
     });
-    await page.route(`**${releaseEntryUrl('1.0.5')}`, async (route) => {
+    await page.route('**' + releaseEntryUrl('1.0.5'), async (route) => {
         await route.abort('failed');
     });
 
