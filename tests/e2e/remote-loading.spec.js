@@ -88,6 +88,7 @@ test('Host loads the published fallback when the current entry fails', async ({ 
     });
 
     await page.goto('/');
+    await expect.poll(() => publishedManifest.value?.currentVersion?.entryUrl).toBeTruthy();
 
     const manifest = publishedManifest.value;
     expect(manifest?.currentVersion?.entryUrl).toBeTruthy();
@@ -108,6 +109,7 @@ test('Host remains available when both published Remote versions fail', async ({
     });
 
     await page.goto('/');
+    await expect.poll(() => publishedManifest.value?.currentVersion?.entryUrl).toBeTruthy();
 
     expect(publishedManifest.value?.currentVersion?.entryUrl).toBeTruthy();
     expect(publishedManifest.value?.fallbackVersion?.entryUrl).toBeTruthy();
