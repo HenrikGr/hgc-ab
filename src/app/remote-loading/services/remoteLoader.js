@@ -1,8 +1,17 @@
 import { loadRemote, registerRemotes } from '@module-federation/enhanced/runtime';
 
 const remoteManifests = new Map();
-const REMOTE_RELEASE_PREFIX =
-  'https://github.com/HenrikGr/consulting-opportunities/releases/';
+const REMOTE_RELEASE_PREFIX = import.meta.env.VITE_REMOTE_RELEASE_PREFIX;
+const REMOTE_ASSET_PROXY_PREFIX = import.meta.env.VITE_REMOTE_ASSET_PROXY_PREFIX;
+
+for (const [name, value] of Object.entries({
+  VITE_REMOTE_RELEASE_PREFIX: REMOTE_RELEASE_PREFIX,
+  VITE_REMOTE_ASSET_PROXY_PREFIX: REMOTE_ASSET_PROXY_PREFIX,
+})) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+}
 
 /**
  * In local Host development, route GitHub Release requests through Vite so
@@ -15,7 +24,7 @@ export function resolveRemoteAssetUrl(url) {
     typeof url === 'string' &&
     url.startsWith(REMOTE_RELEASE_PREFIX)
   ) {
-    return url.replace(REMOTE_RELEASE_PREFIX, '/__remote_assets/releases/');
+    return url.replace(REMOTE_RELEASE_PREFIX, REMOTE_ASSET_PROXY_PREFIX);
   }
 
   return url;
