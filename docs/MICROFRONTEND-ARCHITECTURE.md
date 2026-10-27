@@ -121,7 +121,7 @@ The fallback is an availability mechanism, not a compatibility guarantee. Only p
 
 ## 6. Local development proxy
 
-During Host local development and Vite preview, Remote release URLs are rewritten to the same-origin path `/__remote_assets/releases/`. The Host's Vite middleware fetches the corresponding GitHub Release URL server-side, follows GitHub's redirect to the release asset host, and returns the body to the browser.
+During Host local development and Vite preview, Remote release URLs are rewritten to the same-origin path `/__remote_assets/<owner>/<repository>/releases/`. The Host's Vite middleware derives allowed repositories from `public/microfrontends.json`, fetches the corresponding GitHub Release URL server-side, follows GitHub's redirect to the release asset host, and returns the body to the browser.
 
 The proxy also rewrites embedded GitHub release URL prefixes inside JavaScript/JSON bodies to the local proxy prefix. JavaScript and JSON assets are returned with appropriate MIME types; this is important because browsers reject module scripts served as `application/octet-stream`.
 
