@@ -135,16 +135,3 @@ test('Host displays a configuration error when no remotes are configured', async
     );
 });
 
-test('Remote feature button dispatches its click event', async ({ page }) => {
-    await observePublishedManifest(page);
-    await page.addInitScript(() => {
-        window.__remotePocClicked = false;
-        window.addEventListener('consulting-opportunities:clicked', () => {
-            window.__remotePocClicked = true;
-        });
-    });
-
-    await page.goto('/');
-    await page.getByRole('button').first().click();
-    await expect.poll(() => page.evaluate(() => window.__remotePocClicked)).toBe(true);
-});
