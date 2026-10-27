@@ -28,11 +28,11 @@ The Host is responsible for:
 Key implementation files:
 
 - `public/microfrontends.json` — Host runtime configuration.
-- `src/main.jsx` — bootstrap and manifest loading.
-- `src/remoteLoader.js` — manifest validation, federation registration, and fallback.
-- `src/App.jsx` — lazy feature loading and loading state.
-- `src/RemoteErrorBoundary.jsx` — UI error containment.
-- `vite.config.js` — local release-asset proxy.
+- `src/main.jsx` — browser entry point and bootstrap.
+- `src/app/remote-loading/services/remoteLoader.js` — manifest validation, federation registration, and fallback.
+- `src/app/App.jsx` — lazy feature loading and loading state.
+- `src/app/ui/RemoteErrorBoundary.jsx` — UI error containment.
+- `plugins/remoteReleaseProxy.js` — local release-asset Vite plugin; `vite.config.js` registers it.
 - `tests/e2e/remote-loading.spec.js` — integration behaviour tests.
 
 ### Remote — `HenrikGr/consulting-opportunities`
