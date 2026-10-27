@@ -1,169 +1,64 @@
 # Microfrontend Architecture — Host and Remote
 
-**Status:** Proof of concept  
-**Last reviewed:** 2026-10-26  
+**Status:** PoC implemented; production decisions remain open  
+**Last reviewed:** 2026-10-27  
 **Repositories:** [hgc-ab (Host)](https://github.com/HenrikGr/hgc-ab) · [consulting-opportunities (Remote)](https://github.com/HenrikGr/consulting-opportunities)
 
-## 1. Purpose
+## Purpose and current status
 
-This proof of concept demonstrates runtime composition of a separately released React feature using Vite and Module Federation. The Host owns the application shell and runtime configuration. The Remote owns the feature implementation and publishes versioned release assets. The Host resolves which Remote version to load at runtime from a manifest.
+This PoC demonstrates runtime composition of a separately built and released React feature using Vite and Module Federation. The Host owns the shell, runtime configuration, Remote manifest validation, federation registration, lazy loading, fallback and feature-area failure UI. The Remote owns its feature implementation and publishes versioned release assets.
 
-The Host does not bundle the Remote feature into its own build. Publishing a new Remote release and updating the manifest's current version can therefore change the loaded feature without rebuilding the Host, provided the stable manifest URL remains configured.
+The PoC works with the current integration flow and four Host E2E scenarios. This is not a production-readiness claim; compatibility, security, deployed asset hosting and operational policies remain open.
 
-## 2. Responsibilities and boundaries
+## Runtime configuration and distribution
 
-### Host — `HenrikGr/hgc-ab`
+The Host reads `public/microfrontends.json`, which points to the stable Remote manifest URL:
 
-The Host is responsible for:
+`https://github.com/HenrikGr/consulting-opportunities/releases/latest/download/remote-manifest.json`
 
-- Rendering and keeping the Host shell available.
-- Loading `public/microfrontends.json` at runtime.
-- Fetching each configured Remote manifest.
-- Validating the manifest and registering the current Remote entry with Module Federation.
-- Loading the exposed module lazily.
-- Retrying with the configured fallback release when the current version fails.
-- Showing an error inside the Remote feature area if both current and fallback versions fail.
-- Providing a development/preview proxy for GitHub Release assets.
+The Remote-generated manifest identifies the current release and optional fallback. The Host validates the manifest and loads the exposed module `./FeatureButton` under federation identity `consultingOpportunities`.
 
-Key implementation files:
+GitHub Releases and their manifest/assets are the integration boundary—not Remote source code, local `dist/` output or workflow artifacts. Release tags follow `v<VERSION>`; assets use version-specific URLs so entry files and chunks come from the same release. Published versioned assets must be treated as immutable. The generated manifest is maintained by the Remote release workflow, not hand-edited in the Host repository.
 
-- `public/microfrontends.json` — Host runtime configuration.
-- `src/main.jsx` — browser entry point and bootstrap.
-- `src/app/remote-loading/services/remoteLoader.js` — manifest validation, federation registration, and fallback.
-- `src/app/App.jsx` — lazy feature loading and loading state.
-- `src/app/ui/RemoteErrorBoundary.jsx` — UI error containment.
-- `plugins/remoteReleaseProxy.js` — local release-asset Vite plugin; `vite.config.js` registers it.
-- `tests/e2e/remote-loading.spec.js` — integration behaviour tests.
+## Loading and failure behaviour
 
-### Remote — `HenrikGr/consulting-opportunities`
+1. Host fetches `/microfrontends.json` and the configured Remote manifest.
+2. Host validates the manifest, registers the current entry and lazily loads `./FeatureButton`.
+3. If current loading fails, Host registers the configured fallback and retries.
+4. If loading still fails, Host displays an explanatory error in the feature area while keeping its shell available.
 
-The Remote is responsible for:
+Fallback improves availability; it is not a compatibility guarantee.
 
-- Implementing the feature independently of the Host.
-- Exposing the module `./FeatureButton`.
-- Building a Module Federation entry named `consultingOpportunitiesEntry.js`.
-- Embedding its version in the feature for the PoC.
-- Publishing a versioned GitHub Release containing the entry, its chunks/assets, and `remote-manifest.json`.
+## Local release proxy
 
-Key implementation files:
+During Host development and Vite preview, the Host Vite middleware proxies configured GitHub Release asset requests through `/__remote_assets/<owner>/<repository>/releases/`, rewrites embedded release URLs in JavaScript/JSON, and supplies appropriate MIME types. This is a local development/preview aid. Outside that context, the Host uses the GitHub URLs directly unless an environment provides a separately designed proxy.
 
-- `src/FeatureButton.jsx` — exposed feature and current event.
-- `vite.config.js` — federation identity, exposed module, and release asset base.
-- `package.json` — package/release version.
+## Responsibilities and current contract
 
-## 3. Runtime configuration and manifest contract
+- Host owns shell availability, runtime configuration, loading, fallback and platform-level failure presentation.
+- Remote owns the feature UI and behaviour, and publishes its manifest and versioned assets.
+- Host and Remote share React/React DOM as Module Federation singletons.
+- The Remote currently dispatches `consulting-opportunities:clicked`, but this is a PoC signal, not a stable application API. The corresponding Host E2E test was removed because the event is not a long-term contract. Do not add a general event bus until a concrete use case defines its needs.
 
-The Host reads `public/microfrontends.json` from its own origin. The current configuration maps the key `consultingOpportunities` to the stable manifest URL:
+Key Host files: `public/microfrontends.json`, `src/main.jsx`, `src/app/remote-loading/services/remoteLoader.js`, `src/app/App.jsx`, `src/app/ui/RemoteErrorBoundary.jsx`, `plugins/remoteReleaseProxy.js`, `tests/e2e/remote-loading.spec.js`.
 
-```json
-{
-  "remotes": {
-    "consultingOpportunities": {
-      "manifestUrl": "https://github.com/HenrikGr/consulting-opportunities/releases/latest/download/remote-manifest.json"
-    }
-  }
-}
-```
+## Verification
 
-The manifest URL is stable; its contents identify the current release and an optional fallback release. The Host validates `schemaVersion`, the Remote key and federation name, and the current version's version and entry URL. If present, the fallback must also contain a version and entry URL.
+Run `npm run build` and `npm run test:e2e` in the Host. The current four Playwright scenarios cover:
+1. Loading the current Remote release from its published manifest.
+2. Loading the fallback when the current entry fails.
+3. Keeping the Host available when both versions fail.
+4. Showing a configuration error when no Remotes are configured.
 
-The shape expected by the Host is illustrated below. The actual release manifest is generated by the Remote release workflow; do not maintain a second hand-edited copy in the Host repository.
+Live release paths require network access to GitHub Releases. Run `npm test` separately in the Remote repository.
 
-```json
-{
-  "schemaVersion": 1,
-  "remote": {
-    "key": "consultingOpportunities",
-    "repository": "HenrikGr/consulting-opportunities",
-    "federationName": "consultingOpportunities",
-    "exposes": ["./FeatureButton"]
-  },
-  "currentVersion": {
-    "version": "1.0.6",
-    "tag": "v1.0.6",
-    "entryUrl": "https://github.com/HenrikGr/consulting-opportunities/releases/download/v1.0.6/consultingOpportunitiesEntry.js"
-  },
-  "fallbackVersion": {
-    "version": "1.0.5",
-    "tag": "v1.0.5",
-    "entryUrl": "https://github.com/HenrikGr/consulting-opportunities/releases/download/v1.0.5/consultingOpportunitiesEntry.js"
-  }
-}
-```
+## Open decisions and limitations
 
-The fallback may be `null` or omitted when no fallback is available. Keep the manifest field names and federation identity aligned between the Remote release workflow and the Host loader.
-
-## 4. GitHub Releases are the distribution interface
-
-The integration boundary between the repositories is the Remote's GitHub Release manifest and versioned assets—not the Remote source tree, a local `dist/` directory, or a GitHub Actions workflow artifact.
-
-- Stable manifest: `https://github.com/HenrikGr/consulting-opportunities/releases/latest/download/remote-manifest.json`
-- Versioned entry pattern: `https://github.com/HenrikGr/consulting-opportunities/releases/download/v<VERSION>/consultingOpportunitiesEntry.js`
-- Release tag pattern: `v<VERSION>`, corresponding to the Remote package version.
-- Release assets include the entry and all generated files it needs at runtime, plus the manifest.
-
-The Remote release build uses a version-specific asset base so that generated chunk references point to the same release as the entry. This prevents an entry from one version accidentally loading chunks from another version.
-
-**Immutability rule:** after a release is published, do not replace its assets. Publish a new version for changes. The stable `latest/download/remote-manifest.json` URL is the discovery pointer; the manifest's versioned asset URLs identify the actual immutable release.
-
-The Remote README describes its release publication contract. If the release workflow changes, update that README and this document together.
-
-## 5. Loading and fallback flow
-
-1. Host starts and fetches `/microfrontends.json`.
-2. Host fetches the configured Remote manifest.
-3. Host validates the manifest and registers the current entry as a Module Federation module of type `module`.
-4. The exposed module `./FeatureButton` is loaded lazily.
-5. If the current entry/module fails, the Host force-registers the fallback entry and retries the same exposed module.
-6. If the fallback also fails—or no fallback is configured—the Host displays an explanatory error in the feature area. The Host shell remains available.
-
-The fallback is an availability mechanism, not a compatibility guarantee. Only publish a fallback version whose assets remain available and whose exposed module is compatible with the Host's expected contract.
-
-## 6. Local development proxy
-
-During Host local development and Vite preview, Remote release URLs are rewritten to the same-origin path `/__remote_assets/<owner>/<repository>/releases/`. The Host's Vite middleware derives allowed repositories from `public/microfrontends.json`, fetches the corresponding GitHub Release URL server-side, follows GitHub's redirect to the release asset host, and returns the body to the browser.
-
-The proxy also rewrites embedded GitHub release URL prefixes inside JavaScript/JSON bodies to the local proxy prefix. JavaScript and JSON assets are returned with appropriate MIME types; this is important because browsers reject module scripts served as `application/octet-stream`.
-
-This proxy is a local development/preview aid. In a deployed Host environment, `resolveRemoteAssetUrl()` leaves the GitHub Release URLs unchanged. Any deployed environment must therefore permit access to the configured manifest and release assets, or provide its own explicitly designed asset proxy.
-
-## 7. Shared runtime assumptions and feature contract
-
-- Host and Remote both use React and React DOM as Module Federation shared singletons.
-- The Host expects federation name `consultingOpportunities` and exposed module `./FeatureButton`.
-- The current PoC button dispatches the browser event `consulting-opportunities:clicked` when clicked.
-- That event is currently a PoC integration signal, not a versioned general-purpose domain API. Expand or formalize the contract before relying on it for business-critical communication.
-- The Host and Remote are separate repositories and can be built/released independently.
-
-## 8. Verification
-
-In the Host repository:
-
-```bash
-npm run dev
-npm run build
-npm run test:e2e
-```
-
-The Playwright suite covers:
-
-1. Loading the current Remote release (`1.0.6`).
-2. Falling back to release `1.0.5` when the current entry fails.
-3. Keeping the Host available when both releases fail.
-4. Displaying a configuration error when no Remote is configured.
-5. Dispatching the feature button's click event.
-
-The release-loading tests use the real release assets unless intercepted by a test route, so network access to GitHub Releases is required for the live-release paths. Run the Remote's own test suite separately in its repository with `npm test`.
-
-## 9. Current limitations and next decisions
-
-This is a PoC, not yet a production deployment specification. Before production use, decide and document:
-
-- How the Host's runtime configuration is deployed and validated per environment.
-- Whether production should use GitHub Releases directly or a controlled CDN/asset proxy.
-- Cache headers and rollback/roll-forward procedures for the stable manifest.
-- A formal compatibility policy for current/fallback versions and the exposed module.
-- Ownership/versioning of cross-boundary events or other Remote-to-Host communication.
-- Security and supply-chain expectations for loading executable code at runtime.
+- Runtime configuration deployment and validation per environment.
+- Production asset hosting: GitHub Releases versus a controlled CDN/proxy.
+- Cache policy and operational rollback/roll-forward procedure.
+- Compatibility policy for current/fallback versions and the exposed module.
+- Ownership/versioning for future cross-boundary communication.
+- Security and supply-chain requirements for runtime-loaded code.
 
 Do not infer production guarantees from the current local E2E results.

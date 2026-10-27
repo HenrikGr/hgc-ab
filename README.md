@@ -1,14 +1,10 @@
 # hgc-ab — Host / Remote Module Federation PoC
 
-The Host reads `public/microfrontends.json` at runtime. That file points to the Remote's stable GitHub Release manifest URL, so selecting a published Remote version does not require rebuilding the Host.
+The Host reads `public/microfrontends.json` at runtime. That configuration points to the Remote's stable GitHub Release manifest URL, allowing the selected Remote version to change without rebuilding the Host.
 
-The Remote manifest supplies the current and fallback release entry URLs. The Host registers the current version with Module Federation and, if loading fails, force-replaces the registration with the fallback entry before retrying the exposed module. If both versions fail, the Host displays an error while keeping its own shell available.
+The Remote manifest supplies current and optional fallback release entry URLs. The Host loads the current entry and retries with the fallback if loading fails. If both fail, the Host displays an error in the feature area while keeping its own shell available.
 
-The current PoC manifest is published by the `HenrikGr/consulting-opportunities` Remote repository. Release assets should be treated as immutable after publication.
-
-## Architecture and integration contract
-
-See [Microfrontend Architecture](docs/MICROFRONTEND-ARCHITECTURE.md) for the Host/Remote responsibilities, runtime manifest contract, GitHub Release distribution model, local proxy, failure handling, and release workflow.
+See [Microfrontend Architecture](docs/MICROFRONTEND-ARCHITECTURE.md) for the integration contract, release distribution, local proxy, fallback behaviour and limitations. See [Frontend structure](docs/FRONTEND-STRUCTURE.md) for code ownership and conventions, and [architecture decisions](docs/decisions/) for the key PoC decisions.
 
 ## Local development and verification
 
@@ -16,6 +12,6 @@ See [Microfrontend Architecture](docs/MICROFRONTEND-ARCHITECTURE.md) for the Hos
 - `npm run build` builds the Host.
 - `npm run test:e2e` runs the Playwright browser tests.
 
-The release-loading E2E tests use Remote releases `1.0.6` and `1.0.5`; tests that load a real release require network access to GitHub Releases. The repository is private, so do not publish the application publicly without an explicit decision.
+The current E2E suite covers current-release loading, fallback loading, graceful failure when both releases fail, and missing runtime configuration. Live-release paths require network access to GitHub Releases.
 
-Legacy local-artifact scripts remain in the repository for now, but they are not part of the Host's runtime loading path.
+The repository is private. Do not publish the application publicly without an explicit decision.
