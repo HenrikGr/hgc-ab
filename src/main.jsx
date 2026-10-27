@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { configureRemote, resolveRemoteAssetUrl } from './remoteLoader.js';
-import App from './App.jsx';
+import { configureRemote, resolveRemoteAssetUrl } from './app/remote-loading/services/remoteLoader.js';
+import App from './app/App.jsx';
 
 async function fetchJson(url, label) {
   const resolvedUrl = resolveRemoteAssetUrl(url);
