@@ -1,18 +1,13 @@
-const REMOTE_RELEASE_PREFIX = 'https://github.com/HenrikGr/consulting-opportunities/releases/';
-const LOCAL_PROXY_PREFIX = '/__remote_assets/releases/';
-const PROXY_PATH_PREFIX = '/__remote_assets';
-const UPSTREAM_REPOSITORY_PATH = '/HenrikGr/consulting-opportunities';
-
-async function handleRequest(req, res, next) {
+async function handleRequest(req, res, next, config) {
   const requestUrl = new URL(req.url ?? '/', 'http://localhost');
-  if (!requestUrl.pathname.startsWith(LOCAL_PROXY_PREFIX)) {
+  if (!requestUrl.pathname.startsWith(config.remoteAssetProxyPrefix)) {
     next();
     return;
   }
 
-  const upstreamPath = requestUrl.pathname.slice(PROXY_PATH_PREFIX.length);
+  const upstreamPath = requestUrl.pathname.slice(config.remoteAssetProxyPrefix.length - 1);
   const upstreamUrl = new URL(
-    `${UPSTREAM_REPOSITORY_PATH}${upstreamPath}${requestUrl.search}`,
+    `${config.remoteRepositoryPath}/releases/${upstreamPath.replace(/^releases\//, '')}${requestUrl.search}`,
     'https://github.com',
   );
 
@@ -30,10 +25,14 @@ async function handleRequest(req, res, next) {
         : upstreamContentType;
     let body = Buffer.from(await upstream.arrayBuffer());
 
-    if (contentType.includes('javascript') || contentType.includes('json') ||
-        upstreamUrl.pathname.endsWith('.js') || upstreamUrl.pathname.endsWith('.json')) {
+    if (
+      contentType.includes('javascript') ||
+      contentType.includes('json') ||
+      upstreamUrl.pathname.endsWith('.js') ||
+      upstreamUrl.pathname.endsWith('.json')
+    ) {
       body = Buffer.from(
-        body.toString('utf8').replaceAll(REMOTE_RELEASE_PREFIX, LOCAL_PROXY_PREFIX),
+        body.toString('utf8').replaceAll(config.remoteReleasePrefix, config.remoteAssetProxyPrefix),
         'utf8',
       );
     }
@@ -50,14 +49,28 @@ async function handleRequest(req, res, next) {
 }
 
 /** Vite dev/preview proxy for assets published in the Remote's GitHub Releases. */
-export function remoteReleaseProxy() {
+export function remoteReleaseProxy(config) {
+  for (const name of ['remoteReleasePrefix', 'remoteAssetProxyPrefix', 'remoteRepositoryPath']) {
+    if (typeof config?.[name] !== 'string' || config[name].trim() === '') {
+      throw new Error(`Missing required remote release proxy configuration: ${name}`);
+    }
+  }
+
+  const configured = {
+    remoteReleasePrefix: config.remoteReleasePrefix,
+    remoteAssetProxyPrefix: config.remoteAssetProxyPrefix,
+    remoteRepositoryPath: config.remoteRepositoryPath,
+  };
+
+  const middleware = (req, res, next) => handleRequest(req, res, next, configured);
+
   return {
     name: 'remote-release-proxy',
     configureServer(server) {
-      server.middlewares.use(handleRequest);
+      server.middlewares.use(middleware);
     },
     configurePreviewServer(server) {
-      server.middlewares.use(handleRequest);
+      server.middlewares.use(middleware);
     },
   };
 }
