@@ -3,5 +3,5 @@ dist/
 /.idea/
 
 # Local secrets and environment overrides
-.env.local
-.env.*.local
+.env*
+.DS_Store
